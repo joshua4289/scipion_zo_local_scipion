@@ -26,8 +26,11 @@ from dlstbx.util.colorstreamhandler import ColorStreamHandler
 from dlstbx.util.version import dlstbx_version
 
 import workflows.services  # To add Hack to he service, but this should be done through setup.py, Please see bellow
+# FIX ME : change this import 
 from motioncorr2 import Motioncor2Runner
-from clear_motioncor2queue import Motioncor2RunnerClearQueue
+# from clear_motioncor2queue import Motioncor2RunnerClearQueue
+# from testreciver import Motioncor2Runner2
+from scipion_producer import ScipionProducer
 
 class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
     __frontendref = None
@@ -150,7 +153,9 @@ class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
 # Hack to include the Motioncor2Runner  in known_services
 workflows.services.get_known_services()
 workflows.services.get_known_services.cache['Motioncor2Runner'] = Motioncor2Runner
-workflows.services.get_known_services.cache['Motioncor2RunnerClearQueue'] = Motioncor2RunnerClearQueue
+# workflows.services.get_known_services.cache['Motioncor2RunnerClearQueue'] = Motioncor2RunnerClearQueue
+# workflows.services.get_known_services.cache['Motioncor2Runner2'] = Motioncor2Runner2
+workflows.services.get_known_services.cache['ScipionProducer'] =ScipionProducer
 
 
 if __name__ == '__main__':

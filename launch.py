@@ -41,24 +41,18 @@ B. Remote execution:
 """
 import os
 import re
+import sys
+import json
+import time
 from subprocess import Popen, PIPE
 import pyworkflow as pw
 from pyworkflow.utils import (redStr, greenStr, makeFilePath, join, process,
                               getHostFullName)
 
-#These imports are for generating ActiveMQ recipies
-#from __future__ import absolute_import, division, print_function
-# import workflows.recipe
-# from workflows.transport.stomp_transport import StompTransport
-# import imp
 
-# wr = imp.load_compiled('workflows.recipe', '/dls_sw/apps/dials/dials-v1-10-4/base/lib/python2.7/site-packages/workflows/recipe/__init__.pyc')
-# st = imp.load_compiled('StompTransport','/dls_sw/apps/dials/dials-v1-10-4/base/lib/python2.7/site-packages/workflows/transport/stomp_transport.pyc')
 
 UNKNOWN_JOBID = -1
 LOCALHOST = 'localhost'
-
-# zocalo_job_path = "" #protocol.getProject().path
 
 
 # ******************************************************************
@@ -158,7 +152,9 @@ def _launchLocal(protocol, wait, stdin=None, stdout=None, stderr=None):
         submitDict['JOB_COMMAND'] = command
         jobId = _submit(hostConfig, submitDict)
     else:
-        jobId = _run(command, wait, stdin, stdout, stderr)
+       # jobId = _run(command, wait, stdin, stdout, stderr)
+        jobId = _run_zocolo(command, wait, stdin, stdout, stderr)
+        
 
     return jobId
     
@@ -250,13 +246,14 @@ def _submit(hostConfig, submitDict):
     gcmd = greenStr(command)
     print "** Submiting to queue: '%s'" % gcmd
 
-    # zf = open('/home/jtq89441/Desktop/scipion.log','w+')
-    # zf.write('It works!%s'%submitDict)
-    # zf.close()
+  
     #  ----------------------------------
     DLS_SCIPION = '/dls_sw/apps/scipion/release-1.2.1-zo'
 
+    #TODO:DELETE
     # command_for_recipe = 'module load %s &&'%DLS_SCIPION +'; '+ command
+
+
 
     projpath = submitDict['JOB_COMMAND'].split()[4]
 
@@ -270,54 +267,88 @@ def _submit(hostConfig, submitDict):
 
     print zocolo_cmd
 
+    path_log = os.path.dirname(os.path.join(projpath.replace('"',''), command.split()[1]))
+    print('path: %s'%path_log)
+
+    json_op = os.path.join(path_log,'jobid_mapper.json') 
+    if os.path.exists(json_op):
+        os.remove(json_op)
+
+
+
     print '****Before Zocolo****'
-    msg_p = Popen(zocolo_cmd, shell=True)
+    msg_p = Popen(zocolo_cmd,shell=True,stdout=PIPE,stderr=PIPE)
     print '****After Zocolo****'
 
-    #  ------------------------------------
 
-    #Generating the recipe for ActiveMQ
-    # default_configuration = '/dls_sw/apps/zocalo/secrets/credentials-live.cfg'
-    # # override default stomp host
-    # try:
-    #     StompTransport.load_configuration_file(default_configuration)
-    # except workflows.Error as e:
-    #     print "Error: %s\n" % str(e)
-    #
-    # # StompTransport.add_command_line_options(parser)
-    # # (options, args) = parser.parse_args(sys.argv[1:])
-    # stomp = StompTransport()
-    #
-    # message = {'recipes': [],
-    #            'parameters': {},
-    #            }
-    # # Build a custom recipe
-    # command_for_recipe = 'module load scipion/release-1.2.1-headless &&' + command
-    #
-    # recipe = {}
-    # recipe['1'] = {}
-    # recipe['1']['service'] = "motioncor2_runner"
-    # recipe['1']['queue'] = "motioncor2_runner"
-    # recipe['1']['parameters'] = {}
-    # recipe['1']['parameters']['arguments'] = command_for_recipe
-    # recipe['start'] = [[1, []]]
-    #
-    # message['custom_recipe'] = recipe
-    # print "******************************** THIS IS THE SUBMITTED RECIPE**********************************************"
-    #
-    # stomp.connect()
-    # test_valid_recipe = workflows.recipe.Recipe(recipe)
-    # test_valid_recipe.validate()
-    # print message
-    #
-    # stomp.send('processing_recipe',message)
-    # print("\nMotioncor2 job submitted")
-    ## end of recipe generation
 
-    # Npn zocalo scipion send command 
 
-    p = Popen(command, shell=True, stdout=PIPE)
-    out = p.communicate()[0]
+    #FEATURE: save the job id in a json file 
+    time.sleep(2)
+    completed_job_id = None
+    while completed_job_id is None:
+
+        if os.path.exists(json_op):
+            with open(json_op,'r') as json_ip_file:
+                data = json.load(json_ip_file)
+
+                completed_job_id = data['job_id']
+
+    if completed_job_id > 0:
+        print(completed_job_id)
+        return int(completed_job_id)
+    else:
+        return UNKNOWN_JOBID
+
+    
+
+# -----Scipion default command set-----
+
+    # p = Popen(command, shell=True, stdout=PIPE)
+    # out = p.communicate()[0]
+    # # Try to parse the result of qsub, searching for a number (jobId)
+    # s = re.search('(\d+)', out)
+    # if s:
+    #     return int(s.group(0))
+    # else:
+    #     print "** Couldn't parse %s ouput: %s" % (gcmd, redStr(out)) 
+    #     return UNKNOWN_JOBID
+#-----------end-----------------------
+def _run_zocolo(command, wait, stdin=None, stdout=None, stderr=None):
+    """ Execute a command in a subprocess and return the pid. """
+    gcmd = greenStr(command)
+    print "** Running command: '%s'" % gcmd
+
+    # path_log = os.path.dirname(os.path.join(command.split(' ')[4].replace('"',''),command.split(' ')[5].replace('"','') ))
+    # print('path: %s'%path_log)
+
+    # json_op = os.path.join(path_log,'jobid_mapper.json') 
+    # if os.path.exists(json_op):
+    #     os.remove(json_op)
+
+    # FIX ME: hard coding 
+    zocolo_cmd = 'module load dials; dials.python /dls_sw/apps/scipion/scipion_1_2_1_dials/scipion/pyworkflow/protocol/start_services.py --live -s ScipionProducer %s'% command 
+
+    print zocolo_cmd
+
+
+
+    # path_log = os.path.dirname(os.path.join(projpath.replace('"',''), command.split()[1]))
+    # print('path: %s'%path_log)
+
+    # json_op = os.path.join(path_log,'jobid_mapper.json') 
+    # if os.path.exists(json_op):
+    #     os.remove(json_op)
+
+
+
+
+    print '****Before Zocolo****'
+    msg_p = Popen(zocolo_cmd,shell=True,stdout=PIPE,stderr=PIPE)
+    print '****After Zocolo****'
+
+
+    out = msg_p.communicate()[0]
     # Try to parse the result of qsub, searching for a number (jobId)
     s = re.search('(\d+)', out)
     if s:
@@ -326,15 +357,30 @@ def _submit(hostConfig, submitDict):
         print "** Couldn't parse %s ouput: %s" % (gcmd, redStr(out)) 
         return UNKNOWN_JOBID
 
+    # time.sleep(2)
+    # completed_job_id = None
+    # while completed_job_id is None:
+
+    #     if os.path.exists(json_op):
+    #         with open(json_op,'r') as json_ip_file:
+    #             data = json.load(json_ip_file)
+
+    #             completed_job_id = data['job_id']
+    # return completed_job_id
+
+
+
     
 def _run(command, wait, stdin=None, stdout=None, stderr=None):
     """ Execute a command in a subprocess and return the pid. """
     gcmd = greenStr(command)
     print "** Running command: '%s'" % gcmd
+
     p = Popen(command, shell=True, stdout=stdout, stderr=stderr)
     jobId = p.pid
     if wait:
         p.wait()
+
 
     return jobId
 

@@ -4,9 +4,15 @@
 from __future__ import absolute_import, division, print_function
 
 import sys
+import uuid
 
 import workflows.recipe
 from workflows.transport.stomp_transport import StompTransport
+
+def update_jobid(rw, headers, message):
+    print('update job id')
+    print(headers)
+
 
 if __name__ == '__main__':
 
@@ -24,6 +30,10 @@ if __name__ == '__main__':
     message = {'recipes': [],
                'parameters': {},
                }
+
+    reply_to = 'transient.scipion.%s'%str(uuid.uuid4())
+    print('reply to %s'%reply_to)
+
     # Build a custom recipe
 
     recipe = {}
@@ -32,6 +42,18 @@ if __name__ == '__main__':
     recipe['1']['queue'] = "motioncor2_runner"
     recipe['1']['parameters'] = {}
     recipe['1']['parameters']= sys.argv[1:]
+    recipe['1']['output'] = 2
+    
+    recipe['2'] = {}
+    recipe['2']['service'] = "scipion_call_back"
+    recipe['2']['queue'] = reply_to
+    recipe['2']['parameters'] = {}
+    recipe['2']['parameters']= "diamond"
+    recipe['2']['output'] = 3
+    recipe['3'] = {}
+
+    
+
     print (sys.argv)
 
 
@@ -53,5 +75,17 @@ if __name__ == '__main__':
         'processing_recipe',
 
         message
+        #headers={'reply-to':'scipion_call_back'}
     )
     print("\nMotioncor2 job submitted")
+
+    
+    stomp2 = StompTransport()
+    stomp2.connect()
+    # stomp2._subscribe(1,reply_to, update_jobid)
+    workflows.recipe.wrap_subscribe(stomp2, reply_to, update_jobid)
+    print('end')
+
+
+
+
