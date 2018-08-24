@@ -61,6 +61,7 @@ LOCALHOST = 'localhost'
 
 def launch(protocol, wait=False, stdin=None, stdout=None, stderr=None):
     """ This function should be used to launch a protocol
+
     This function will decide which case, A or B will be used.
     """
     if _isLocal(protocol):
