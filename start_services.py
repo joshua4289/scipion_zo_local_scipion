@@ -25,13 +25,6 @@ from dlstbx import enable_graylog
 from dlstbx.util.colorstreamhandler import ColorStreamHandler
 from dlstbx.util.version import dlstbx_version
 
-import workflows.services  # To add Hack to he service, but this should be done through setup.py, Please see bellow
-# FIX ME : change this import 
-from motioncorr2 import Motioncor2Runner
-# from clear_motioncor2queue import Motioncor2RunnerClearQueue
-# from testreciver import Motioncor2Runner2
-from scipion_producer import ScipionProducer
-
 class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
     __frontendref = None
     use_live_infrastructure = False
@@ -73,7 +66,8 @@ class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
 
         #   logging.getLogger('stomp.py').setLevel(logging.DEBUG)
         logging.getLogger('workflows').setLevel(logging.INFO)
-        logging.getLogger('scipion').setLevel(logging.INFO)
+        #FIXME: this is hard-coding don't think it's needed
+        #logging.getLogger('scipion').setLevel(logging.INFO)
 
         self.log = logging.getLogger('dlstbx.service')
         self.log.setLevel(logging.DEBUG)
@@ -149,10 +143,16 @@ class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
 
         frontend.get_status = extend_status_wrapper
 
+import workflows.services  # To add Hack to he service, but this should be done through setup.py, Please see bellow
+# FIX ME : change this import to reflect a generic runner but does not face the user
+from scipion_consumer import ScipionRunner
+# from clear_motioncor2queue import Motioncor2RunnerClearQueue
+
+from scipion_producer import ScipionProducer
 
 # Hack to include the Motioncor2Runner  in known_services
 workflows.services.get_known_services()
-workflows.services.get_known_services.cache['Motioncor2Runner'] = Motioncor2Runner
+workflows.services.get_known_services.cache['ScipionRunner'] = ScipionRunner
 # workflows.services.get_known_services.cache['Motioncor2RunnerClearQueue'] = Motioncor2RunnerClearQueue
 # workflows.services.get_known_services.cache['Motioncor2Runner2'] = Motioncor2Runner2
 workflows.services.get_known_services.cache['ScipionProducer'] =ScipionProducer
