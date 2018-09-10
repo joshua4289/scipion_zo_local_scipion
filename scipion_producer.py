@@ -7,7 +7,8 @@ import Queue
 from workflows.services.common_service import CommonService
 import workflows.recipe
 from workflows.transport.stomp_transport import StompTransport
-
+#TODO: change the strings that refer to "MotionCor2" to now refer to ScipionRunner but because this handles the transient queue
+#TODO:should not be an issue
 class ScipionProducer(CommonService):
     '''A zocalo service for running Scipion'''
 
