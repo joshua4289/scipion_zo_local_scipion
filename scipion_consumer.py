@@ -33,25 +33,14 @@ class ScipionRunner(CommonService):
         import subprocess
         from subprocess import Popen
 
-        #try:
-        print("this is rw")
-        print(rw)
-        print("this is rw_recipie_step")
-        print(rw.recipe_step)
 
-
-        #TODO:remove after debugging
-
-        # print("this is rw_recipie_step2")
-        # print(rw.recipe[rw.recipe_pointer+1])
-        # print("Header")
-        # print(header)
 
         # get the partamthers
+
         session = rw.recipe_step['parameters']
 
         # build the directories,
-        project_name, gda2_workspace_dir = self.create_project_paths(session)
+        project_name, gda2_workspace_dir,project_path= self.create_project_paths(session)
 
         # get the template filename for a beamline
         template_filename = '/dls_sw/%s/scripts/templates/workflow_v1_2_from_v11_noispyb.json' % (session['microscope'].lower())
@@ -86,16 +75,32 @@ class ScipionRunner(CommonService):
         #    self.log.error("Scipion Zocalo runner could not process the message %s with the error %s" % (str(header), e))
 
     def create_project_paths(self, session):
+        ''' Timestamped versions of project names '''
+
+
         import shutil, os
 
         project_path, timestamp = self.find_visit_dir_from_session_info(session)
 
         gda2_workspace_dir = os.path.join(project_path,'processed')
         gda2_raw_dir = os.path.join(project_path,'raw')
+
+
         project_name =  str(session['session_id']) + '_' + str(timestamp)
 
 
         #os.makedirs(gda2_workspace_dir)
+
+        #Make initial project path
+        if not os.path.exists(project_path):
+            os.makedirs(project_path)
+        else:
+            pass
+
+
+
+
+        #Make raw and processed dirs
 
 
 
@@ -113,7 +118,7 @@ class ScipionRunner(CommonService):
         # gda2_workspace_dir.mkdir(parents=True, exist_ok=True)
         # gda2_raw_dir.mkdir(parents=True,exist_ok=True)
 
-        return str(project_name), str(gda2_workspace_dir)
+        return str(project_name), str(gda2_workspace_dir),str(project_path)
 
     def find_visit_dir_from_session_info(self, session):
         """ Returns a path  given a microscope and session-id  from ISPyB """
@@ -159,10 +164,14 @@ class ScipionRunner(CommonService):
         #TODO: FIX account for TIFF case format is a useless user input
         #TODO: FIX Hard coded value based on the number of steps in workflow . There is a better way
         #config_file[0]['filesPattern']=str()
+
+
         config_file[0]['dosePerFrame'] = float(session['dosePerFrame'])
         config_file[0]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
         config_file[0]['samplingRate'] = float(session['samplingRate'])
-        config_file[0]['filespath'] = os.path.join(project_path, 'raw/GridSquare*/Data')
+        config_file[0]['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')                                               #os.path.join(project_path, '/raw/GridSquare*/Data')
+
+
 
 
 
