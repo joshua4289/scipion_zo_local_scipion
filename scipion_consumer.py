@@ -35,7 +35,7 @@ class ScipionRunner(CommonService):
 
 
 
-        # get the partamthers
+        # get the parameters
 
         session = rw.recipe_step['parameters']
 
@@ -73,12 +73,16 @@ class ScipionRunner(CommonService):
         rw.send([])
         #except Exception as e:
         #    self.log.error("Scipion Zocalo runner could not process the message %s with the error %s" % (str(header), e))
+    def shutdown_consumer(self):
+        ''' Shutdown Consumer based on the timeout mentioned in the Import step of workflow '''
+
+        pass
 
     def create_project_paths(self, session):
         ''' Timestamped versions of project names '''
 
 
-        import shutil, os
+        import shutil, os,errno
 
         project_path, timestamp = self.find_visit_dir_from_session_info(session)
 
@@ -92,31 +96,24 @@ class ScipionRunner(CommonService):
         #os.makedirs(gda2_workspace_dir)
 
         #Make initial project path
-        if not os.path.exists(project_path):
+        try:
             os.makedirs(project_path)
-        else:
-            pass
+        except OSError:
+            self.log.warning ('Could not create path to project  %s'%(project_path))
+
+        #Make raw and  processed dirs as gda2
+
+        path_list = [gda2_workspace_dir,gda2_raw_dir]
+
+        for p in path_list:
+           try:
+               os.makedirs(p)
+           except OSError:
+               if os.path.exists(p):
+                   self.log.warning ('path  exists %s '%(p))
 
 
 
-
-        #Make raw and processed dirs
-
-
-
-        if not os.path.exists(gda2_raw_dir)  :
-            os.makedirs(gda2_raw_dir)
-        else:
-            pass
-
-        if not os.path.exists(gda2_workspace_dir):
-            os.makedirs(gda2_workspace_dir)
-        else:
-            pass
-
-
-        # gda2_workspace_dir.mkdir(parents=True, exist_ok=True)
-        # gda2_raw_dir.mkdir(parents=True,exist_ok=True)
 
         return str(project_name), str(gda2_workspace_dir),str(project_path)
 
@@ -129,11 +126,15 @@ class ScipionRunner(CommonService):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         #TODO:visit path cannot be constructed from user input but has to be constructed with ispyb
         #TODO:session_id not in Camel Case
+        #TODO:remove hard-code path
+
         #  /dls/microscope/data/year/session['session_id]
 
         project_year = timestamp[:4]
         project_path = "/tmp/jtq89441/dls/{}/data/{}/{}/".format(str(session['microscope']).lower(), project_year,session['session_id'])
-        print("project path is %s" % project_path)
+
+
+        #print("project path is %s" % project_path)
 
         #short_timestamp = str(timestamp).split('_')[1]
 
@@ -161,27 +162,51 @@ class ScipionRunner(CommonService):
 
 
 
-        #TODO: FIX account for TIFF case format is a useless user input
-        #TODO: FIX Hard coded value based on the number of steps in workflow . There is a better way
+        #FIX:account for TIFF case format is a useless user input
+        #TODO:Hard coded value based on the number of steps in workflow . There is a better way
         #config_file[0]['filesPattern']=str()
 
 
-        config_file[0]['dosePerFrame'] = float(session['dosePerFrame'])
-        config_file[0]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
-        config_file[0]['samplingRate'] = float(session['samplingRate'])
-        config_file[0]['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')                                               #os.path.join(project_path, '/raw/GridSquare*/Data')
+        for i in range(len(config_file)):
 
+            if config_file[i]['object.className'] == "ProtImportMovies":
+                config_file[i]['dosePerFrame'] = float(session['dosePerFrame'])
+                config_file[i]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
+                config_file[i]['samplingRate'] = float(session['samplingRate'])
+                config_file[i]['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')
 
+            if config_file[i]['object.className'] == "ProtGautomatch":
+                config_file[i]['particleSize'] = float(session['particleSize'])
+                config_file[i]['minDist'] = float(session['minDist'])
 
-
-
-        config_file[5]['particleSize'] = float(session['particleSize'])
-        config_file[5]['minDist'] = float(session['minDist'])
-        config_file[3]['findPhaseShift'] = bool(session['findPhaseShift'])
-
+            if config_file[i]['object.className'] == "ProtCTFFind":
+                config_file[i]['findPhaseShift'] = bool(session['findPhaseShift'])
 
         with open(output_filename, 'w') as f:
             json.dump(config_file, f, indent=4, sort_keys=True)
+
+
+        # config_file[0]['dosePerFrame'] = float(session['dosePerFrame'])
+        # config_file[0]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
+        # config_file[0]['samplingRate'] = float(session['samplingRate'])
+        # config_file[0]['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')                                               #os.path.join(project_path, '/raw/GridSquare*/Data')
+        #
+        #
+        #
+        #
+        #
+        # config_file[5]['particleSize'] = float(session['particleSize'])
+        # config_file[5]['minDist'] = float(session['minDist'])
+        # config_file[3]['findPhaseShift'] = bool(session['findPhaseShift'])
+
+
+
+
+
+
+
+
+
 
     def _create_prefix_command(self, args):
 
@@ -211,11 +236,11 @@ class ScipionRunner(CommonService):
 
         p1 = Popen(create_project_cmd, cwd=str(gda2_workspace_dir), stderr=PIPE, stdout=PIPE, shell=True)
         out_project_cmd, err_project_cmd = p1.communicate()
-        print("Output+++++")
-        print(out_project_cmd)
-        print("Error+++++")
-        print(err_project_cmd)
-        print("End+++++")
+        # print("Output+++++")
+        # print(out_project_cmd)
+        # print("Error+++++")
+        # print(err_project_cmd)
+        # print("End+++++")
 
         if p1.returncode != 0:
             raise Exception("Could not create project ")
@@ -231,37 +256,4 @@ class ScipionRunner(CommonService):
         #     logging.warn("about to start processing{}".format(message))
         #     template = Path(message)
 
-    #
-# def start_scipion_run(self):
-# 	""" Run start project and schedule project that runs the steps """
-#
-#
-# 	print("Scipion run Pressed")
-#
-# 	from subprocess import Popen, PIPE
-# 	import sys
-#
-# 	project_name, gda2_workspace_dir = create_project_paths()
-#
-# 	project_json = StartScipionFromRecipe.get_recipe()  # send_recipe()
-# 	print("Getting message ")
-#
-# 	create_project_args = ['cd', '$SCIPION_HOME;', 'scipion', 'python', 'scripts/create_project.py', project_name,
-# 						   project_json, gda2_workspace_dir]
-# 	create_project_cmd = _create_prefix_command(create_project_args)
-#
-# 	print("prefix command is " + create_project_cmd)
-# 	p1 = Popen(create_project_cmd, cwd=str(gda2_workspace_dir), stderr=PIPE, stdout=PIPE, shell=True)
-# 	out_project_cmd, err_project_cmd = p1.communicate()
-#
-# 	if p1.returncode != 0:
-# 		raise Exception("Could not create project ")
-# 	else:
-# 		schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion', 'python',
-# 								 '$SCIPION_HOME/scripts/schedule_project.py', project_name]
-# 		schedule_project_cmd = _create_prefix_command(schedule_project_args)
-# 		Popen(schedule_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
-#
-# 	def on_message(self, headers, message):
-# 		logging.warn("about to start processing{}".format(message))
-# 		template = Path(message)
+
