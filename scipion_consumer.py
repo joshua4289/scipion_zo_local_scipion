@@ -42,7 +42,9 @@ class ScipionRunner(CommonService):
         # build the directories,
         project_name, gda2_workspace_dir,project_path= self.create_project_paths(session)
 
+        #TODO:remove hack
         # get the template filename for a beamline
+        #template_filename ='/dls_sw/%s/scripts/templates/workflow.json' % (session['microscope'].lower())
         template_filename = '/dls_sw/%s/scripts/templates/workflow_v1_2_from_v11_noispyb.json' % (session['microscope'].lower())
 
         #TODO:json filename has to be written out based on session_id and beam_line
@@ -134,9 +136,7 @@ class ScipionRunner(CommonService):
         project_path = "/tmp/jtq89441/dls/{}/data/{}/{}/".format(str(session['microscope']).lower(), project_year,session['session_id'])
 
 
-        #print("project path is %s" % project_path)
 
-        #short_timestamp = str(timestamp).split('_')[1]
 
         return project_path,timestamp
 
@@ -145,26 +145,10 @@ class ScipionRunner(CommonService):
 
         config_file = json.load(open(template_filename))#print("Cannot find config file ")
 
-        # Make changes to the template based on values  set by user
-        #TODO:testing code for non-hard coded json
-
-        # locations = {}
-        # for i in range(len(config_file)):
-        #     locations[config_file[i]['object.className']] = i
-        #
-        # loc = loactions['ProtImportMovies']
-        # config_file[loc]['dosePerFrame'] = float(session['dosePerFrame'])
-        # config_file[loc]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
-        # config_file[loc]['samplingRate'] = float(session['samplingRate'])
-        # config_file[loc]['filespath'] = os.path.join(project_path, 'raw/GridSquare*/Data')
-        #
-
-
-
 
         #FIX:account for TIFF case format is a useless user input
         #TODO:Hard coded value based on the number of steps in workflow . There is a better way
-        #config_file[0]['filesPattern']=str()
+
 
 
         for i in range(len(config_file)):
@@ -186,36 +170,14 @@ class ScipionRunner(CommonService):
             json.dump(config_file, f, indent=4, sort_keys=True)
 
 
-        # config_file[0]['dosePerFrame'] = float(session['dosePerFrame'])
-        # config_file[0]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
-        # config_file[0]['samplingRate'] = float(session['samplingRate'])
-        # config_file[0]['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')                                               #os.path.join(project_path, '/raw/GridSquare*/Data')
-        #
-        #
-        #
-        #
-        #
-        # config_file[5]['particleSize'] = float(session['particleSize'])
-        # config_file[5]['minDist'] = float(session['minDist'])
-        # config_file[3]['findPhaseShift'] = bool(session['findPhaseShift'])
-
-
-
-
-
-
-
-
-
-
     def _create_prefix_command(self, args):
 
         """Prefixes command to run loading modules to setup env """
 
         cmd = ('source /etc/profile.d/modules.sh;'
                'module unload python/ana;'
-               'module unload scipion/release-1.2-binary;'  # .1'-zo;'
-               'module load scipion/release-1.2-binary;'  # 1;'#-zo;'
+               'module unload scipion/release-1.2.1-headless;' #release-1.2.1-headless;' # .1'-zo;'  #release-1.2-binary;'
+               'module load scipion/release-1.2.1-headless;'   #release-1.2-binary;'                             # release-1.2-binary;'  # 1;'#-zo;'
                'export SCIPION_NOGUI=true;'
                'export SCIPIONBOX_ISPYB_ON=True;'
                )
@@ -236,13 +198,10 @@ class ScipionRunner(CommonService):
 
         p1 = Popen(create_project_cmd, cwd=str(gda2_workspace_dir), stderr=PIPE, stdout=PIPE, shell=True)
         out_project_cmd, err_project_cmd = p1.communicate()
-        # print("Output+++++")
-        # print(out_project_cmd)
-        # print("Error+++++")
-        # print(err_project_cmd)
-        # print("End+++++")
 
+        print(err_project_cmd)
         if p1.returncode != 0:
+
             raise Exception("Could not create project ")
         else:
             schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion', 'python',
@@ -251,9 +210,6 @@ class ScipionRunner(CommonService):
             Popen(schedule_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
             print("schedule command is " + schedule_project_cmd)
 
-        # def on_message(self, headers, message):
-        #
-        #     logging.warn("about to start processing{}".format(message))
-        #     template = Path(message)
+
 
 
