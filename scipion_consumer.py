@@ -94,6 +94,8 @@ class ScipionRunner(CommonService):
 
         project_name =  str(session['session_id']) + '_' + str(timestamp)
 
+        ##FIXME:GET THE TIMESTAMP FROM HERE AND MAKE JSON FILENAME
+
 
         #os.makedirs(gda2_workspace_dir)
 
@@ -133,7 +135,7 @@ class ScipionRunner(CommonService):
         #  /dls/microscope/data/year/session['session_id]
 
         project_year = timestamp[:4]
-        project_path = "/tmp/jtq89441/dls/{}/data/{}/{}/".format(str(session['microscope']).lower(), project_year,session['session_id'])
+        project_path = "/dls/tmp/jtq89441/dls/{}/data/{}/{}/".format(str(session['microscope']).lower(), project_year,session['session_id'])
 
 
 
@@ -146,8 +148,8 @@ class ScipionRunner(CommonService):
         config_file = json.load(open(template_filename))#print("Cannot find config file ")
 
 
-        #FIX:account for TIFF case format is a useless user input
-        #TODO:Hard coded value based on the number of steps in workflow . There is a better way
+        #FIX:FUTURE account for TIFF case format is a useless user input
+
 
 
 
@@ -165,6 +167,12 @@ class ScipionRunner(CommonService):
 
             if config_file[i]['object.className'] == "ProtCTFFind":
                 config_file[i]['findPhaseShift'] = bool(session['findPhaseShift'])
+                config_file[i]['windowSize'] = float(session['windowSize'])
+
+            #tags for gctf and ctffind are different so can't put under same loop
+            #windowSize is a shared tag between ctfffind and gctf
+            if config_file[i]['object.className'] == "ProtGctf":
+                config_file[i]['windowSize'] = float(session['windowSize'])
 
         with open(output_filename, 'w') as f:
             json.dump(config_file, f, indent=4, sort_keys=True)
