@@ -7,6 +7,13 @@ import os, re
 
 
 
+#import tensorflow
+#tensorflow.python.client import device_lib
+#resource_list = device_lib.list_loval_devices()
+# if r in resource_list:
+#if r['GPU'] exists
+
+
 # Active MQ Scipion Consumer started as gda2
 
 class ScipionRunner(CommonService):
@@ -166,7 +173,7 @@ class ScipionRunner(CommonService):
                 config_file[i]['minDist'] = float(session['minDist'])
 
             if config_file[i]['object.className'] == "ProtCTFFind":
-                config_file[i]['findPhaseShift'] = bool(session['findPhaseShift'])
+                config_file[i]['findPhaseShift'] = session['findPhaseShift']
                 config_file[i]['windowSize'] = float(session['windowSize'])
 
             #tags for gctf and ctffind are different so can't put under same loop
