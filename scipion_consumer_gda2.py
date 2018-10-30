@@ -212,13 +212,11 @@ class ScipionRunnerGda2(CommonService):
         refresh_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python','scripts/refresh_project.py', project_name]
 
         refresh_project_cmd = self._create_prefix_command(refresh_project_args)
-        print ("*********REFRESH PROJECT SCRIPT IS RUNNING***********************")
+
         print(refresh_project_cmd)
 
         return refresh_project_cmd
-        #import sys
-        #print("Quit successfully")
-        #sys.exit(1)
+
 
 
 
@@ -233,8 +231,7 @@ class ScipionRunnerGda2(CommonService):
                                project_json, gda2_workspace_dir]
         create_project_cmd = self._create_prefix_command(create_project_args)
 
-        print("the command")
-        print(create_project_cmd)
+
 
 
         p1 = Popen(create_project_cmd, cwd=str(gda2_workspace_dir), stderr=PIPE, stdout=PIPE, shell=True)
@@ -249,14 +246,13 @@ class ScipionRunnerGda2(CommonService):
             # TODO:testing of starting of daemon
             refresh_project_cmd = self._start_refresh_project(project_name)
             Popen(refresh_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
-            print("STARTING DAEMON FOR MONITOR " + refresh_project_cmd)
+
 
 
             schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python',
                                      '$SCIPION_HOME/scripts/schedule_project.py', project_name]
             schedule_project_cmd = self._create_prefix_command(schedule_project_args)
             Popen(schedule_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
-            print("schedule command is " + schedule_project_cmd)
 
 
 
@@ -264,8 +260,8 @@ class ScipionRunnerGda2(CommonService):
 
 
 
-            #['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python',
-                                          #'$SCIPION_HOME/scripts/refresh', project_name]
+
+
 
 
 
