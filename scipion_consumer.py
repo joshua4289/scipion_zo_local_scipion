@@ -101,10 +101,10 @@ class ScipionRunner(CommonService):
 
         project_name =  str(session['session_id']) + '_' + str(timestamp)
 
-        ##FIXME:GET THE TIMESTAMP FROM HERE AND MAKE JSON FILENAME
 
 
-        #os.makedirs(gda2_workspace_dir)
+
+     
 
         #Make initial project path
         try:
