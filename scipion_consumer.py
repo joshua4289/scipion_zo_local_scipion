@@ -5,7 +5,7 @@ from subprocess import PIPE, Popen
 import json
 import os, re
 
-
+# this was done duting p45 testing
 
 #import tensorflow
 #tensorflow.python.client import device_lib
@@ -203,7 +203,7 @@ class ScipionRunner(CommonService):
         Starts a project in a given visit folder with a json workflow
         :type project_json: object
         """
-        create_project_args = ['cd', '$SCIPION_HOME;', 'scipion', 'python', 'scripts/create_project.py', project_name,
+        create_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python', 'scripts/create_project.py', project_name,
                                project_json, gda2_workspace_dir]
         create_project_cmd = self._create_prefix_command(create_project_args)
 
@@ -219,7 +219,7 @@ class ScipionRunner(CommonService):
 
             raise Exception("Could not create project ")
         else:
-            schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion', 'python',
+            schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python',
                                      '$SCIPION_HOME/scripts/schedule_project.py', project_name]
             schedule_project_cmd = self._create_prefix_command(schedule_project_args)
             Popen(schedule_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
