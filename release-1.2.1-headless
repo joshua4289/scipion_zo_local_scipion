@@ -1,0 +1,91 @@
+#%Module1.0#####################################################################
+##
+## scipion modulefile
+##
+proc ModulesHelp { } {
+    puts stderr "\tLoads scipion release 1.2.1 "
+    puts stderr "modules loaded in order listed :openmpi,global/cluster-quiet,cuda"
+}
+
+module-whatis "loads scipion release 1.2.1 "
+
+
+# load which depends on Anaconda Python
+if { ! [is-loaded openmpi] } {
+    module load openmpi
+}
+
+if { ! [is-loaded global/cluster-quiet-quiet] } {
+    module load global/cluster-quiet
+}
+
+
+if { ! [is-loaded cuda/8.0] } {
+    module load cuda/8.0
+
+}
+
+
+
+set SCIPION_ROOT $env(softwaredir)/scipion/1_2_1_headless
+set SCIPION_HOME $SCIPION_ROOT/scipion
+
+#this uses the config at DLS different from folder structure at CNB (non-standard)
+
+set SCIPION_CONFIG $SCIPION_ROOT/scipion/config/scipion.conf
+#set SCIPION_CONFIG $SCIPION_ROOT/config/scipion.conf 
+
+
+
+append-path PYTHONPATH $SCIPION_HOME/software/lib/python2.7/site-packages
+prepend-path PATH $SCIPION_HOME/software/bin
+append-path PATH $SCIPION_HOME
+append-path PATH $SCIPION_HOME/scripts
+
+
+append-path LD_LIBRARY_PATH $SCIPION_HOME/software/lib
+
+#get current user
+set current_user $env(USER)
+set special_user "gda2"
+
+
+
+if { $current_user == $special_user } {
+#puts " $current_user is special setting special home"
+#running as gda2 needs these dummy avriables to be exported to the env because gda2 is homeless 
+setenv HOME            /dls/tmp/gda2/ 
+setenv XDG_CONFIG_HOME /dls/tmp/gda2/
+
+
+# put in the /dls/tmp/gda2/scipion.conf
+
+#
+#file copy $SCIPION_CONFIG $USER_CONFIG/scipion.conf
+set USER_CONFIG "~/.config/scipion/"
+#this is to get the vatriable in the loop 
+setenv SCIPION_CONFIG $SCIPION_CONFIG
+
+#have to delete before I create in tcl therfore -force
+
+#file copy -force $SCIPION_CONFIG $env(HOME)/scipion.conf
+
+} else {
+set USER_CONFIG "~/.config/scipion/"
+
+}
+
+
+file delete -force -- $USER_CONFIG
+file mkdir $USER_CONFIG
+
+file copy $SCIPION_CONFIG $USER_CONFIG/scipion.conf
+
+setenv MOTIONCORR $SCIPION_HOME/software/em/motioncorr-2.1.0.5/
+setenv SCIPION_HOME $SCIPION_HOME
+
+setenv ISPYB_CONFIG /dls_sw/dasc/mariadb/credentials/ispyb.cfg
+
+#set-alias scipion-template "scipion run scipionbox_wizard_eBic.py"
+#set-alias scipion-load "scipion run load_project.py"
+#set-alias scipion-edit "scipion run edit_workflow.py" 
