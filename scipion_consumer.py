@@ -52,7 +52,7 @@ class ScipionRunner(CommonService):
         #TODO:remove hack
         # get the template filename for a beamline
         #template_filename ='/dls_sw/%s/scripts/templates/workflow.json' % (session['microscope'].lower())
-        template_filename = '/dls_sw/%s/scripts/templates/workflow_v1_2_from_v11_noispyb.json' % (session['microscope'].lower())
+        template_filename = '/dls_sw/%s/scripts/templates/pablo_2d_streamer.json' % (session['microscope'].lower())
 
         #TODO:json filename has to be written out based on session_id and beam_line
         # got the timestamp from project
@@ -95,30 +95,27 @@ class ScipionRunner(CommonService):
 
         project_path, timestamp = self.find_visit_dir_from_session_info(session)
 
-        gda2_workspace_dir = os.path.join(project_path,'processed')
-        gda2_raw_dir = os.path.join(project_path,'raw')
-
-
         project_name =  str(session['session_id']) + '_' + str(timestamp)
 
-
-
-
-     
 
         #Make initial project path
         try:
             os.makedirs(project_path)
+
         except OSError:
             self.log.warning ('Could not create path to project  %s'%(project_path))
 
-        #Make raw and  processed dirs as gda2
+        #Make raw, processed and ispyb dirs as gda2
+        gda2_workspace_dir = os.path.join(project_path,'processed')
+        gda2_raw_dir = os.path.join(project_path,'raw')
+        ispyb_dir =os.path.join(project_path,'.ispyb')
 
-        path_list = [gda2_workspace_dir,gda2_raw_dir]
+        path_list = [gda2_workspace_dir,gda2_raw_dir, ispyb_dir]
 
         for p in path_list:
            try:
                os.makedirs(p)
+               self.log.info("Folder created %s" %(p))
            except OSError:
                if os.path.exists(p):
                    self.log.warning ('path  exists %s '%(p))
@@ -127,6 +124,8 @@ class ScipionRunner(CommonService):
 
 
         return str(project_name), str(gda2_workspace_dir),str(project_path)
+
+
 
     def find_visit_dir_from_session_info(self, session):
         """ Returns a path  given a microscope and session-id  from ISPyB """
@@ -156,30 +155,44 @@ class ScipionRunner(CommonService):
 
 
         #FIX:FUTURE account for TIFF case format is a useless user input
-
-
+        lowRes, highRes = calculate_ctfest_range(float(session['samplingRate']))
 
 
         for i in range(len(config_file)):
 
-            if config_file[i]['object.className'] == "ProtImportMovies":
-                config_file[i]['dosePerFrame'] = float(session['dosePerFrame'])
-                config_file[i]['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
-                config_file[i]['samplingRate'] = float(session['samplingRate'])
-                config_file[i]['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')
+            # Get a "protocol"
+            prot = config_file[i]
 
-            if config_file[i]['object.className'] == "ProtGautomatch":
-                config_file[i]['particleSize'] = float(session['particleSize'])
-                config_file[i]['minDist'] = float(session['minDist'])
+            if prot['object.className'] == "ProtImportMovies":
+                prot['dosePerFrame'] = float(session['dosePerFrame'])
+                prot['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
+                prot['samplingRate'] = float(session['samplingRate'])
+                prot['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')
 
-            if config_file[i]['object.className'] == "ProtCTFFind":
-                config_file[i]['findPhaseShift'] = session['findPhaseShift']
-                config_file[i]['windowSize'] = float(session['windowSize'])
+            if prot['object.className'] == "ProtGautomatch":
+                prot['particleSize'] = float(session['particleSize'])
+                prot['minDist'] = float(session['minDist'])
+
+
+            if prot['object.className'] == "ProtCTFFind":
+                prot['findPhaseShift'] = session['findPhaseShift']
+                prot['windowSize'] = float(session['windowSize'])
+                prot['lowRes'] = lowRes
+                prot['highRes'] = highRes
 
             #tags for gctf and ctffind are different so can't put under same loop
             #windowSize is a shared tag between ctfffind and gctf
-            if config_file[i]['object.className'] == "ProtGctf":
-                config_file[i]['windowSize'] = float(session['windowSize'])
+            if prot['object.className'] == "ProtGctf":
+                prot['windowSize'] = float(session['windowSize'])
+                prot['lowRes'] = lowRes
+                prot['highRes'] = highRes
+
+            if prot['object.className'] == 'ProtRelionExtractParticles':
+                boxSize = calculateBoxSize(float(session['samplingRate']), float(session['particleSize']))
+                prot['boxSize'] = boxSize
+
+            if prot['object.className'] == 'ProtMonitorISPyB':
+                prot['visit'] = str(session['session_id'])
 
         with open(output_filename, 'w') as f:
             json.dump(config_file, f, indent=4, sort_keys=True)
@@ -226,5 +239,27 @@ class ScipionRunner(CommonService):
             print("schedule command is " + schedule_project_cmd)
 
 
+emanBoxSizes=[32, 36, 40, 48, 52, 56, 64, 66, 70, 72, 80, 84, 88,
+             100, 104, 108, 112, 120, 128, 130, 132, 140, 144, 150, 160, 162, 168, 176, 180, 182, 192, 
+             200, 208, 216, 220, 224, 240, 256, 264, 288, 300, 308, 320, 324, 336, 338, 352, 364, 384,
+             400, 420, 432, 448, 450, 462, 480, 486, 500, 504, 512, 520, 528, 546, 560, 576, 588, 
+             600, 640, 648, 650, 660, 672, 686, 700, 702, 704, 720, 726, 728, 750, 768, 770, 784, 
+             800, 810, 840, 882, 896, 910, 924, 936, 972, 980, 1008, 1014, 1020, 1024]
 
+# Calculation functions
+def calculateBoxSize(samplingRate, particleSize):
 
+    
+    exactBoxSize = int((particleSize*2)/samplingRate)* 1.5
+    for bs in emanBoxSizes:
+        if bs >= exactBoxSize:
+            return bs
+
+    return 1024
+
+def calculate_ctfest_range(samplingRate):
+
+    if samplingRate < 1:
+        return (0.01, 0.12)
+    else:
+        return (0.03, 0.12)
