@@ -67,7 +67,7 @@ class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
         #   logging.getLogger('stomp.py').setLevel(logging.DEBUG)
         logging.getLogger('workflows').setLevel(logging.INFO)
         #FIXME: this is hard-coding don't think it's needed
-        #logging.getLogger('scipion').setLevel(logging.INFO)
+        
 
         self.log = logging.getLogger('dlstbx.service')
         self.log.setLevel(logging.DEBUG)
@@ -143,12 +143,14 @@ class DLSTBXServiceStarter(workflows.contrib.start_service.ServiceStarter):
 
         frontend.get_status = extend_status_wrapper
 
-import workflows.services  # To add Hack to he service, but this should be done through setup.py, Please see bellow
-# FIX ME : change this import to reflect a generic runner but does not face the user
+import workflows.services
+#To add Hack to he service, but this should be done through setup.py, Please see bellow
+
 from scipion_consumer import ScipionRunner
 #FIXME: temporary hack for gda2 consumer
 from scipion_consumer_gda2 import ScipionRunnerGda2
-from clear_scipionqueue import ScipionRunnerClearQueue #Motioncor2RunnerClearQueue
+from clear_scipionqueue import ScipionRunnerClearQueue
+#Motioncor2RunnerClearQueue
 
 from scipion_producer import ScipionProducer
 from zoc_gctf_consumer import GctfRunner
@@ -156,7 +158,7 @@ from zoc_mc2_consumer import MotionCor2Runner
 from zoc_gautomatch_consumer import GautomatchRunner
 
 
-from scipion_consumer_dials import ScipionRunnerDials
+
 from zoc_relion_refine_consumer import Relion2DRunner
 
 # Hack to include the Motioncor2Runner  n known_services
@@ -170,10 +172,6 @@ workflows.services.get_known_services.cache['ScipionRunnerClearQueue']=ScipionRu
 workflows.services.get_known_services.cache['Relion2DRunner']=Relion2DRunner
 workflows.services.get_known_services.cache['GautomatchRunner']= GautomatchRunner
 
-
-
-
-#workflows.services.get_known_services.cache['ScipionThumbnailRunner']=Motioncor2RunnerClearQueue
 if __name__ == '__main__':
     DLSTBXServiceStarter().run(program_name='dlstbx.service',
                                version=dlstbx_version(),
