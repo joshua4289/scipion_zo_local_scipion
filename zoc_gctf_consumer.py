@@ -69,9 +69,11 @@ class GctfRunner(CommonService):
         print("THESE ARE THE ERROR MESSAGES")
         #print(err_project_cmd)
 
+        done_file_name = os.path.join(scipion_dir, 'done.tmp')
+        with open(done_file_name, 'w') as done_file:
+            done_file.write("Complete\n")
 
-        # p2 = Popen('touch done.tmp' ,cwd=scipion_dir,shell=True)
-        # p2.wait()
+        self.log.info("Wrote log file to '%s'" % (done_file_name))
 
         self.log.info("Finish running Gctf Zocalo")
         print(header)
