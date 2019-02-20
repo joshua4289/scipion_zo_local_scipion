@@ -42,6 +42,12 @@ class MotionCor2Runner(CommonService):
 
         self.log.info("Scipion Dir is %s" % scipion_dir)
 
+        # modify the GPU flag to be the correct GPU for this consumer
+        gpu_index = arguments.index('-Gpu') + 1
+        arguments[gpu_index] = os.getenv('SGE_HGR_gpu', 'GPU1')[3]
+
+        self.log.info("Arguments are '%s'" % ' '.join(arguments))
+
         cmd = ('source /etc/profile.d/modules.sh;'
                'module load EM/MotionCor2/1.1.0;'
                'MotionCor2 '
@@ -55,9 +61,9 @@ class MotionCor2Runner(CommonService):
         out_project_cmd, err_project_cmd = p1.communicate()
 
         p1.wait()
-
-        #print("THESE ARE THE ERROR MESSAGES ")
-        #print(err_project_cmd)
+        print ("SCIPION WORK DIR IS  %s" %(scipion_dir))
+        print("THESE ARE THE ERROR MESSAGES ")
+        print(err_project_cmd)
 
         self.log.info("Finish running MotionCor2 Zocalo")
         rw.transport.ack(header)
