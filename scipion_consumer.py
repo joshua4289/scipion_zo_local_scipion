@@ -5,14 +5,6 @@ from subprocess import PIPE, Popen
 import json
 import os, re
 
-# this was done duting p45 testing
-
-#import tensorflow
-#tensorflow.python.client import device_lib
-#resource_list = device_lib.list_loval_devices()
-# if r in resource_list:
-#if r['GPU'] exists
-
 
 # Active MQ Scipion Consumer started as gda2
 
@@ -29,7 +21,7 @@ class ScipionRunner(CommonService):
         """Subscribe to the per_image_analysis queue. Received messages must be acknowledged.
 
 		"""
-        queue_name = "scipion_runner"
+        queue_name = "Scipion_runner"
         self.log.info("queue that is being listended to is %s" % queue_name)
         workflows.recipe.wrap_subscribe(self._transport, queue_name,
                                         self.run_scipion, acknowledgement=True, log_extender=self.extend_log,
