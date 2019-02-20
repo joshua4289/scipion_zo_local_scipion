@@ -4,9 +4,9 @@ module load global/cluster
 
 check_username=`whoami`
 echo username is $check_username
-#if [[ $check_username != "gda2" ]]
+#if [ $check_username != "gda2" ]
 #then
-:
+
 #echo "Script must be run as gda2..exiting "
 #exit
 
@@ -16,20 +16,24 @@ echo username is $check_username
 
 #DIALS_PYTHON=
 
-
-qsub -N scip.cons <<EOF 2>&1
+#else
+qsub -N scip.cons <<EOF 
 #!/bin/bash
 #$ -q high.q ### Queue name
 #$ -P em
 #$ -j y ### Merge stdin and stdout
+#$ -e /dls/tmp/jtq89441/scip.cons.e
+#$ -o /dls/tmp/jtq89441/scip.cons.o
 ###=======================================================#
 #$ -l gpu=1
 #$ -l gpu_arch=Pascal
 #$ -l exclusive
+#$ -l h_vmem=120G
+  
 ###=====================================================###
 . /etc/profile.d/modules.sh
 module load dials
-# export DIALS_START_SERVICE="/home/jtq89441/workspace/zocalo_test/motioncor2_launcher/testing/share_local/start_services.py"
-
 dials.python /home/jtq89441/workspace/zocalo_test/motioncor2_launcher/testing/share_local/start_services.py --live -s ScipionRunner
 EOF
+echo "Script submitted "
+#fi
