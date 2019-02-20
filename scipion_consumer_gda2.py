@@ -65,22 +65,26 @@ class ScipionRunnerGda2(CommonService):
 
         # build the json file
         self.create_json_file_from_template(template_filename, json_filename, session,gda2_workspace_dir)
+        self.log.info("JSON file written")
 
-        # TODO:Testing of the gda2 daemon that updates the status of the project
-        # TODO:TO BE TESTED
+        
         self._start_refresh_project(project_name)
+        self.log.info("gda2 project daemon started GOOD")
 
         # populate the project
         self.create_project_and_run_scipion(project_name, json_filename, gda2_workspace_dir)
+        self.log.info("Project directories created !!")
 
         self.log.info("Finish running Scipion Zocalo")
         self.log.info("All is good")
+        self.log.info('%s'%gda2_workspace_dir)
+        self.log.info('Project name is %s' %project_name)
         msg_id = header['message-id']
         sub_id = header['subscription']
         # FIXME: Useful only for Debugging remove from code
-        print('MSG_ID:%s' % msg_id)
-        print('Sub:%s' % sub_id)
-        print('header:%s' % header)
+        #print('MSG_ID:%s' % msg_id)
+        #print('Sub:%s' % sub_id)
+        #print('header:%s' % header)
 
         rw.transport.ack(header)
         rw.send([])
@@ -114,11 +118,13 @@ class ScipionRunnerGda2(CommonService):
 
         #os.makedirs(gda2_workspace_dir)
 
-        #Make initial project path
+        #Don't make the project path it will be created by the rsync script 
+         
         try:
             os.makedirs(project_path)
         except OSError:
             self.log.warning ('Could not create path to project  %s'%(project_path))
+            self.log.debug('Created project path at %s'%(project_path))
 
         #Make raw and  processed dirs as gda2
 
@@ -227,6 +233,7 @@ class ScipionRunnerGda2(CommonService):
         Starts a project in a given visit folder with a json workflow
         :type project_json: object
         """
+        import time
         create_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python', 'scripts/create_project.py', project_name,
                                project_json, gda2_workspace_dir]
         create_project_cmd = self._create_prefix_command(create_project_args)
@@ -235,7 +242,10 @@ class ScipionRunnerGda2(CommonService):
 
 
         p1 = Popen(create_project_cmd, cwd=str(gda2_workspace_dir), stderr=PIPE, stdout=PIPE, shell=True)
+        time.sleep(2)
         out_project_cmd, err_project_cmd = p1.communicate()
+        self.log.info("Create project script SUCCESS")
+
 
         print(err_project_cmd)
         if p1.returncode != 0:
@@ -246,13 +256,16 @@ class ScipionRunnerGda2(CommonService):
             # TODO:testing of starting of daemon
             refresh_project_cmd = self._start_refresh_project(project_name)
             Popen(refresh_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
-
+            time.sleep(2)
+            self.log.info("REFRESH PROJECT DAEMON ")
 
 
             schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python',
                                      '$SCIPION_HOME/scripts/schedule_project.py', project_name]
             schedule_project_cmd = self._create_prefix_command(schedule_project_args)
+            time.sleep(2)
             Popen(schedule_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
+            self.log.info("PROTOCOLS BEING SCHEDULED ")
 
 
 
