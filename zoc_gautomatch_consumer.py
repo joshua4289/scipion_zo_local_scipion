@@ -5,6 +5,7 @@ from subprocess import PIPE, Popen
 import json
 import os, re
 
+
 # Active MQ Scipion Consumer started as gda2
 
 class GautomatchRunner(CommonService):
@@ -45,24 +46,23 @@ class GautomatchRunner(CommonService):
         # Compose the command and the environment
         cmd = ('source /etc/profile.d/modules.sh;'
                'module load EM/Gautomatch;'
-               'Gautomatch '
-               )
+               'Gautomatch ')
         cmd += ' '.join(arguments)
 
         self.log.info(cmd)
 
         # Run the command
+
+        #FIXME:wrong directory $scipion_dir is the top level dir
+
         from subprocess import PIPE
         p1 = Popen(cmd ,cwd=scipion_dir,shell=True)
-
+        import time
+        time.sleep(2)
         #out_project_cmd, err_project_cmd = p1.communicate()
         #print(out_project_cmd)
 
-        # Read output and feedback ...but Gautomatch does not do this
-        # while p1.poll() is None: #True or p1.returncode != 0
-        #     print(p1.stdout.readline())
-        #
-        # t_queue = (rw.recipe[rw.recipe_pointer + 1]['queue'])
+
 
         p1.wait()
         print ("SCIPION WORK DIR IS  %s" %(scipion_dir))
@@ -74,7 +74,7 @@ class GautomatchRunner(CommonService):
         # p2.wait()
 
         self.log.info("Finish running Gautomatch Zocalo")
-        print(header)
+
         rw.transport.ack(header)
         #rw.send([])
 

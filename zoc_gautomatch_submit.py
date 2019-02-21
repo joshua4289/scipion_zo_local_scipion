@@ -58,14 +58,6 @@ if __name__ == '__main__':
 
     message['custom_recipe'] = recipe
 
-    # reply_to = 'transient.Gautomatch.%s' % str(uuid.uuid4())
-    # recipe['1']['output'] = 2
-    # recipe['2'] = {}
-    # recipe['2']['service'] = "relion_refine_call_back"
-    # recipe['2']['queue'] = reply_to
-    # recipe['2']['parameters'] = {}
-    # recipe['2']['output'] = 3
-    # recipe['3'] = {}
 
     recipe['start'] = [[1, []]]
 
