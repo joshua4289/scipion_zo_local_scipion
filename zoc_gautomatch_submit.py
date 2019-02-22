@@ -22,12 +22,8 @@ import uuid
 
 def lazy_pprint(*args, **kwargs):
     from pprint import pprint
-    # pprint(*args, **kwargs)
 
 
-# def get_output_file(file_path):
-#   print(os.path.dirname(get_output_file()))
-#   return os.path.dirname(get_output_file())
 
 if __name__ == '__main__':
 
@@ -38,11 +34,10 @@ if __name__ == '__main__':
     except workflows.Error as e:
         print("Error: %s\n" % str(e))
 
-    # StompTransport.add_command_line_options(parser)
-    # (options, args) = parser.parse_args(sys.argv[1:])
+
     stomp = StompTransport()
 
-    #output_file = get_output_file(sys.argv[-1])
+
 
     message = {'recipes': [],
                'parameters': {},
