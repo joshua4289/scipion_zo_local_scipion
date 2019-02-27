@@ -65,15 +65,11 @@ class ScipionRunner(CommonService):
         self.log.info("All is good")
         msg_id = header['message-id']
         sub_id = header['subscription']
-        # FIXME: Useful only for Debugging remove from code
-        print('MSG_ID:%s' % msg_id)
-        print('Sub:%s' % sub_id)
-        print('header:%s' % header)
+
 
         rw.transport.ack(header)
         rw.send([])
-        #except Exception as e:
-        #    self.log.error("Scipion Zocalo runner could not process the message %s with the error %s" % (str(header), e))
+
     def shutdown_consumer(self):
         ''' Shutdown Consumer based on the timeout mentioned in the Import step of workflow '''
 
@@ -87,7 +83,7 @@ class ScipionRunner(CommonService):
 
         project_path, timestamp = self.find_visit_dir_from_session_info(session)
 
-        project_name =  str(session['session_id']) + '_' + str(timestamp)
+        project_name = str(session['session_id']) + '_' + str(timestamp)
 
 
         #Make initial project path
@@ -127,10 +123,7 @@ class ScipionRunner(CommonService):
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         #TODO:visit path cannot be constructed from user input but has to be constructed with ispyb
-        #TODO:session_id not in Camel Case
-        #TODO:remove hard-code path
 
-        #  /dls/microscope/data/year/session['session_id]
 
         project_year = timestamp[:4]
         project_path = "/dls/tmp/jtq89441/dls/{}/data/{}/{}/".format(str(session['microscope']).lower(), project_year,session['session_id'])
@@ -146,7 +139,7 @@ class ScipionRunner(CommonService):
         config_file = json.load(open(template_filename))#print("Cannot find config file ")
 
 
-        #FIX:FUTURE account for TIFF case format is a useless user input
+
         lowRes, highRes = calculate_ctfest_range(float(session['samplingRate']))
 
 
@@ -159,7 +152,8 @@ class ScipionRunner(CommonService):
                 prot['dosePerFrame'] = float(session['dosePerFrame'])
                 prot['numberOfIndividualFrames'] = int(session['numberOfIndividualFrames'])
                 prot['samplingRate'] = float(session['samplingRate'])
-                prot['filesPath'] =  str(project_path).replace('processed','raw/GridSquare*/Data')
+                prot['filesPath'] = str(project_path).replace('processed','raw/GridSquare*/Data')
+
 
             if prot['object.className'] == "ProtGautomatch":
                 prot['particleSize'] = float(session['particleSize'])
@@ -168,14 +162,13 @@ class ScipionRunner(CommonService):
 
             if prot['object.className'] == "ProtCTFFind":
                 prot['findPhaseShift'] = session['findPhaseShift']
-                prot['windowSize'] = float(session['windowSize'])
+                prot['windowSize'] = int(session['windowSize'])
                 prot['lowRes'] = lowRes
                 prot['highRes'] = highRes
 
-            #tags for gctf and ctffind are different so can't put under same loop
-            #windowSize is a shared tag between ctfffind and gctf
+
             if prot['object.className'] == "ProtGctf":
-                prot['windowSize'] = float(session['windowSize'])
+                prot['windowSize'] = int(session['windowSize'])
                 prot['lowRes'] = lowRes
                 prot['highRes'] = highRes
 
@@ -196,8 +189,8 @@ class ScipionRunner(CommonService):
 
         cmd = ('source /etc/profile.d/modules.sh;'
                'module unload python/ana;'
-               'module unload scipion/release-1.2.1-headless;' #release-1.2.1-headless;' # .1'-zo;'  #release-1.2-binary;'
-               'module load scipion/release-1.2.1-headless;'   #release-1.2-binary;'                             # release-1.2-binary;'  # 1;'#-zo;'
+               'module unload scipion/release-1.2.1-headless;'
+               'module load scipion/release-1.2.1-headless;'   
                'export SCIPION_NOGUI=true;'
                'export SCIPIONBOX_ISPYB_ON=True;'
                )
@@ -206,7 +199,7 @@ class ScipionRunner(CommonService):
     def create_project_and_run_scipion(self, project_name, project_json, gda2_workspace_dir):
         """
         Starts a project in a given visit folder with a json workflow
-        :type project_json: object
+
         """
         create_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python', 'scripts/create_project.py', project_name,
                                project_json, gda2_workspace_dir]
@@ -242,7 +235,7 @@ emanBoxSizes=[32, 36, 40, 48, 52, 56, 64, 66, 70, 72, 80, 84, 88,
 def calculateBoxSize(samplingRate, particleSize):
 
     
-    exactBoxSize = int((particleSize*2)/samplingRate)* 1.5
+    exactBoxSize = int((particleSize*2)/samplingRate)* 1.2
     for bs in emanBoxSizes:
         if bs >= exactBoxSize:
             return bs
