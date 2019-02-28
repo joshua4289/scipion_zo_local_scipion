@@ -11,10 +11,12 @@ import os, re
 class ScipionRunner(CommonService):
     '''A zocalo service for running Scipion'''
 
+
     # Human readable service name
     _service_name = "Scipion  Runner"
 
-    # Logger name
+
+
     _logger_name = 'scipion.zocalo.services.runner'
 
     def initializing(self):
@@ -29,21 +31,14 @@ class ScipionRunner(CommonService):
 
     def run_scipion(self, rw, header, message):
 
-        import subprocess
-        from subprocess import Popen
-
-
-
-        # get the parameters
+       # get the parameters
 
         session = rw.recipe_step['parameters']
 
         # build the directories,
         project_name, gda2_workspace_dir,project_path= self.create_project_paths(session)
 
-        #TODO:remove hack
-        # get the template filename for a beamline
-        #template_filename ='/dls_sw/%s/scripts/templates/workflow.json' % (session['microscope'].lower())
+
         template_filename = '/dls_sw/%s/scripts/templates/pablo_2d_streamer.json' % (session['microscope'].lower())
 
         #TODO:json filename has to be written out based on session_id and beam_line
@@ -52,20 +47,32 @@ class ScipionRunner(CommonService):
 
         timestamp_from_project = str(project_name).split('_')[-1]
         json_basename = 'scipion_template_{}.json'.format(timestamp_from_project)
+
+        #TODO : move this to user_workspace_dir not gda2_workspace_dir
+
         json_filename = os.path.join(str(gda2_workspace_dir), json_basename)
 
 
-        # build the json file
-        self.create_json_file_from_template(template_filename, json_filename, session,gda2_workspace_dir)
+        # build the json  with params from webapp
 
-        # populate the project
+        self.create_json_file_from_template(template_filename, json_filename, session,gda2_workspace_dir)
+        self.log.info("DATA PROCESSING started at {0} with {1}".format(timestamp_from_project,json_filename))
+
+
+        # refresh the project required to keep the GUI ticking along as we stream
+
+       #  populate the project
         self.create_project_and_run_scipion(project_name, json_filename, gda2_workspace_dir)
+
 
         self.log.info("Finish running Scipion Zocalo")
         self.log.info("All is good")
-        msg_id = header['message-id']
-        sub_id = header['subscription']
+        # gda2 workspace dir is the top level processing ,processed and raw underneath this
 
+
+
+        #msg_id = header['message-id']
+        #sub_id = header['subscription']
 
         rw.transport.ack(header)
         rw.send([])
@@ -86,7 +93,8 @@ class ScipionRunner(CommonService):
         project_name = str(session['session_id']) + '_' + str(timestamp)
 
 
-        #Make initial project path
+        #TODO: remove this after testing project paths are created by data-transfer
+        #      gda2 only works in processed
         try:
             os.makedirs(project_path)
 
@@ -94,11 +102,13 @@ class ScipionRunner(CommonService):
             self.log.warning ('Could not create path to project  %s'%(project_path))
 
         #Make raw, processed and ispyb dirs as gda2
+
         gda2_workspace_dir = os.path.join(project_path,'processed')
         gda2_raw_dir = os.path.join(project_path,'raw')
-        ispyb_dir =os.path.join(project_path,'.ispyb')
+        ispyb_dir = os.path.join(project_path,'.ispyb')
+        user_workspace_dir =  os.path.join(project_path,'processing')
 
-        path_list = [gda2_workspace_dir,gda2_raw_dir, ispyb_dir]
+        path_list = [ gda2_workspace_dir,gda2_raw_dir, ispyb_dir,user_workspace_dir ]
 
         for p in path_list:
            try:
@@ -139,9 +149,10 @@ class ScipionRunner(CommonService):
         config_file = json.load(open(template_filename))#print("Cannot find config file ")
 
 
-
+        # CTF Estimation Ranges
         lowRes, highRes = calculate_ctfest_range(float(session['samplingRate']))
 
+        # substitutions in  config file
 
         for i in range(len(config_file)):
 
@@ -196,6 +207,24 @@ class ScipionRunner(CommonService):
                )
         return cmd + ' '.join(args)
 
+
+    def _start_refresh_project(self,project_name):
+        """ starts the script in scripts/refresh_project.py """
+        refresh_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python','scripts/refresh_project.py', project_name]
+
+        refresh_project_cmd = self._create_prefix_command(refresh_project_args)
+
+        print(refresh_project_cmd)
+
+        return refresh_project_cmd
+
+
+    def sleeper(self,secs):
+        import time
+
+        return time.sleep(secs)
+
+
     def create_project_and_run_scipion(self, project_name, project_json, gda2_workspace_dir):
         """
         Starts a project in a given visit folder with a json workflow
@@ -210,32 +239,43 @@ class ScipionRunner(CommonService):
 
 
         p1 = Popen(create_project_cmd, cwd=str(gda2_workspace_dir), stderr=PIPE, stdout=PIPE, shell=True)
+        self.sleeper(2)
         out_project_cmd, err_project_cmd = p1.communicate()
+        self.log.info("Create project script SUCCESS")
 
-        print(err_project_cmd)
+
         if p1.returncode != 0:
-
+            self.log.error("Could not create project at {}".format(gda2_workspace_dir))
             raise Exception("Could not create project ")
         else:
             schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python',
                                      '$SCIPION_HOME/scripts/schedule_project.py', project_name]
             schedule_project_cmd = self._create_prefix_command(schedule_project_args)
             Popen(schedule_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
+
+
+            self.sleeper(2)
             print("schedule command is " + schedule_project_cmd)
+            self.log.info("schedule command is ".format(schedule_project_cmd))
+
+            refresh_project_cmd = self._start_refresh_project(project_name)
+            Popen(refresh_project_cmd, cwd=str(gda2_workspace_dir), shell=True)
 
 
-emanBoxSizes=[32, 36, 40, 48, 52, 56, 64, 66, 70, 72, 80, 84, 88,
-             100, 104, 108, 112, 120, 128, 130, 132, 140, 144, 150, 160, 162, 168, 176, 180, 182, 192, 
-             200, 208, 216, 220, 224, 240, 256, 264, 288, 300, 308, 320, 324, 336, 338, 352, 364, 384,
-             400, 420, 432, 448, 450, 462, 480, 486, 500, 504, 512, 520, 528, 546, 560, 576, 588, 
-             600, 640, 648, 650, 660, 672, 686, 700, 702, 704, 720, 726, 728, 750, 768, 770, 784, 
-             800, 810, 840, 882, 896, 910, 924, 936, 972, 980, 1008, 1014, 1020, 1024]
+            self.sleeper(2)
+            self.log.info(" gui refresh daemon")
+
 
 # Calculation functions
 def calculateBoxSize(samplingRate, particleSize):
+    emanBoxSizes = [32, 36, 40, 48, 52, 56, 64, 66, 70, 72, 80, 84, 88,
+                    100, 104, 108, 112, 120, 128, 130, 132, 140, 144, 150, 160, 162, 168, 176, 180, 182, 192,
+                    200, 208, 216, 220, 224, 240, 256, 264, 288, 300, 308, 320, 324, 336, 338, 352, 364, 384,
+                    400, 420, 432, 448, 450, 462, 480, 486, 500, 504, 512, 520, 528, 546, 560, 576, 588,
+                    600, 640, 648, 650, 660, 672, 686, 700, 702, 704, 720, 726, 728, 750, 768, 770, 784,
+                    800, 810, 840, 882, 896, 910, 924, 936, 972, 980, 1008, 1014, 1020, 1024]
 
-    
-    exactBoxSize = int((particleSize*2)/samplingRate)* 1.2
+    exactBoxSize = int((particleSize*2)/samplingRate) * 1.2
     for bs in emanBoxSizes:
         if bs >= exactBoxSize:
             return bs
