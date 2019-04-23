@@ -14,7 +14,7 @@ class ScipionRunnerClearQueue(CommonService):
 
     def initializing(self):
         '''Subscribe to the per_image_analysis queue. Received messages must be acknowledged.'''
-        queue_name = "scipion_runner"
+        queue_name = "Scipion_runner"
         self.log.info("queue that is being listended to is %s" % queue_name)
         #self._transport.subscribe(queue_name,self.consume_message,acknowledgement=True)
         workflows.recipe.wrap_subscribe(self._transport,queue_name,self.consume_message, acknowledgement=True, log_extender=self.extend_log,allow_non_recipe_messages=True)
