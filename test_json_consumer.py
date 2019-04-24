@@ -24,10 +24,12 @@ class Scipionpath(CommonService):
 		"""
 
         self.running_projects = list()
-        queue_name = "TestScipionWF"
+
+        queue_name = "ScipionMainDev"
+        #queue_name = "TestScipionWF"
         self.log.info("queue that is being listended to is %s" % queue_name)
         workflows.recipe.wrap_subscribe(self._transport, queue_name,
-                                        self.find_json_from_recipe, acknowledgement=True, log_extender=self.extend_log,
+                                        self.find_json_from_recipe, acknowledgement=False, log_extender=self.extend_log,
                                         allow_non_recipe_messages=True)
 
     
@@ -44,8 +46,24 @@ class Scipionpath(CommonService):
         from subprocess import Popen
 
         # get the parameters
+        # rw is None
+        # header is the timestamp
 
-        msg = rw.recipe_step['parameters']
+        print(rw,header,message)
+        # print ("--")
+        # print(header)
+        # print ("---")
+        msg = message['parameters']
+
+        #old code
+        #msg = rw.recipe_step['parameters']
+
+
+        #rw._transport.ack(header)
+
+
+        #rw.send([])
+
         json_file = msg['scipion_workflow']
         json_path = (Path(json_file))
         
