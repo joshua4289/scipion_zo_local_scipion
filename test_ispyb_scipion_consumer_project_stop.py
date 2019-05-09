@@ -30,7 +30,7 @@ class ScipionRunner(CommonService):
         #queue_name = "TestScipionWF"
         self.log.info("queue that is being listended to is %s" % queue_name)
         workflows.recipe.wrap_subscribe(self._transport, queue_name,
-                                        self.find_json_from_recipe, acknowledgement=False, log_extender=self.extend_log,
+                                        self.find_json_from_recipe, acknowledgement=True, log_extender=self.extend_log,
                                         allow_non_recipe_messages=True)
 
     
@@ -72,10 +72,15 @@ class ScipionRunner(CommonService):
 
         # check and kill any old scipion projects in the visit
 
-        #self._on_message(project_name)
+        self._on_message(project_name)
 
-        #rw.transport.ack(header)
-        #rw.send([])
+
+
+
+
+
+        rw.transport.ack(header)
+        rw.send([])
 
 
 
@@ -96,7 +101,7 @@ class ScipionRunner(CommonService):
 
     @staticmethod
     def create_timestamp():
-    # type: () -> str
+        # type: () -> str
         import datetime
         return datetime.datetime.now().strftime("%y%m%d%H%M%S")
 
@@ -116,62 +121,24 @@ class ScipionRunner(CommonService):
         pass
 
 
-    def _on_message(self,project_name,visit_dir):
+
+    def _on_message(self,project_name):
 
         ''' On new start project message stop  previous running projects '''
 
         self.log.info("Scipion running projects are ".format(self.running_projects))
+        if project_name in self.running_projects and len(self.running_projects) > 1:
 
-        #TODO: On a new message write out the in-memory list to .projects/projects.txt
+            while len(self.running_projects) != 1:
 
+                project_to_stop = self.running_projects.pop(0)
 
-        projects_file = visit_dir/'.projects'/'project.txt'
+                stop_project_args =['cd', '$SCIPION_HOME;', 'scipion', '--config $SCIPION_HOME/config/scipion.conf','python', 'scripts/stop_project.py', project_to_stop]
 
-        with open (str(projects_file) , 'a+') as pf:
-
-            pf.write(project_name)
-            pf.write("\n")
-            self.log.info("project added to .projects file is %s " % project_name)
-
-
-
-        #TODO: Read txt file and stop project instead of the in-memory list because method needs to be independent of the instance of the consumer
-
-        with open(str(projects_file),'r') as pf:
-            project_list = pf.readlines()
-            self.log.info("list of projects is %s " % project_list)
-
-            while len(project_list) > 1:
-                to_stop = project_list.pop()
-
-                self.log.info("%s will be stopped " % to_stop)
-                stop_project_args = ['cd', '$SCIPION_HOME;', 'scipion', '--config $SCIPION_HOME/config/scipion.conf','python', 'scripts/stop_project.py', to_stop]
                 stop_project_cmd = self._create_prefix_command(stop_project_args)
-                try:
-                    p1 = Popen(stop_project_cmd,shell=True)
-                    out,err = p1.communicate()
-                    if p1.returncode != 0:
-                        self.log.info("%s could not be stopped " %to_stop)
-                        self.log.info("%s was returned by stop project " %out )
-                        self.log.info("%s error was returned by stop_project " %err)
-                except:
-                    pass
-
-
-
-
-        # if project_name in self.running_projects and len(self.running_projects) > 1:
-        #
-        #     while len(self.running_projects) != 1:
-        #
-        #         project_to_stop = self.running_projects.pop(0)
-        #
-        #         stop_project_args =['cd', '$SCIPION_HOME;', 'scipion', '--config $SCIPION_HOME/config/scipion.conf','python', 'scripts/stop_project.py', project_to_stop]
-        #
-        #         stop_project_cmd = self._create_prefix_command(stop_project_args)
-        #         self.log.info("STOP PROJECT WAS RUN FOR %s " %(project_to_stop))
-        #     else:
-        #         self.log.info("project left in queue is %s" %(self.running_projects))
+                self.log.info("STOP PROJECT WAS RUN FOR %s " %(project_to_stop))
+            else:
+                self.log.info("project left in queue is %s" %(self.running_projects))
 
 
 
@@ -204,7 +171,7 @@ class ScipionRunner(CommonService):
         return cmd + ' '.join(args)
 
     def load_json(self, json_path):
-       # Path --> json_dict
+       # Path --> json_list
        import json
        json_data = json.load(open(str(json_path)))
        return json_data
@@ -219,8 +186,6 @@ class ScipionRunner(CommonService):
         # return json_to_modify
 
     def create_project_and_process(self,json_path):
-
-        ''' start processing by calling various functions  '''
 
         timestamp = self.create_timestamp()
         visit_dir = json_path.parents[1]
@@ -301,8 +266,6 @@ class ScipionRunner(CommonService):
 
 
 
-
-
         if p1.returncode != 0:
             
             self.log.error("Could not create project at {}".format(visit_dir))
@@ -311,11 +274,11 @@ class ScipionRunner(CommonService):
             raise Exception("Could not create project ")
         else:
 
-            self._on_message(str(project_name), visit_dir)
 
-            #self.running_projects.append(project_name)
 
-            #self.log.info("%s project  has been added to list of runs "%project_name)
+
+            self.running_projects.append(project_name)
+            self.log.info("%s project  has been added to list of runs "%project_name)
 
             schedule_project_args = ['cd', '$SCIPION_HOME;', 'scipion','--config $SCIPION_HOME/config/scipion.conf', 'python',
                                      '$SCIPION_HOME/scripts/schedule_project.py', project_name]
@@ -324,10 +287,10 @@ class ScipionRunner(CommonService):
 
 
             self.sleeper(2)
+            print("schedule command is " + schedule_project_cmd)
             self.log.info("schedule command is ".format(schedule_project_cmd))
 
-            refresh_project_cmd = self._start_refresh_project(project_name)
-            Popen(refresh_project_cmd, cwd=str(workspace_dir), shell=True)
+            self._find_running_project_names(workspace_dir)
 
 
 
@@ -344,21 +307,21 @@ class ScipionRunner(CommonService):
 
 
 
-    # def _find_running_project_names(self,directory):
-    #     '''lists running projects in  and adds to .projects/projects.txt latest project folder on the top'''
-    #     find_running_project_args = ['ls','-ltd','*/']                                                              #['find','.','-type','d']
-    #
-    #
-    #
-    #     p1  = Popen(find_running_project_args, cwd=str(directory), shell=True)
-    #     out, err = p1.communicate()
-    #     self.log.info(out)
-    #
-    #
-    #
-    #     with open('projects.txt','w+') as projects_file:
-    #         projects_file.write(out)
-    #
+    def _find_running_project_names(self,directory):
+        '''lists running projects and adds to .projects/projects.txt'''
+        find_running_project_args = ['find','.','-type','d']
+
+
+
+        p1  = Popen(find_running_project_args, cwd=str(dir), shell=True)
+        out, err = p1.communicate()
+        self.log.info(out)
+
+
+
+        with open('projects.txt','w+') as projects_file:
+            projects_file.write(out)
+
 
 
 
